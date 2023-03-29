@@ -30,7 +30,7 @@ It should generally be safe to re-run the tool. Only content of posts that have 
 python3 main.py -o <output_dir> -u https://www.youtube.com/@<youtube-handle>
 
 # Windows binary:
-yt-community-post-archiver.exe -o <output_dir> -u https://www.youtube.com/@<youtube-handle>
+yt-community-posts-archiver.exe -o <output_dir> -u https://www.youtube.com/@<youtube-handle>
 ```
 
 **Arguments:**
