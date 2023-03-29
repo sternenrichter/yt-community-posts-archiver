@@ -320,9 +320,9 @@ class ContentExporter:
                     content=post_content.post_text,
                     attached_content=attached_content,
                     likes=post_content.like_count,
-                )
+                ).encode("utf-8")
 
-                with open(os.path.join(post_path, "post.txt"), "w") as f:
+                with open(os.path.join(post_path, "post.txt"), "wb") as f:
                     f.write(post_output)
 
                 with open(os.path.join(post_path, "post.json"), "w") as f:

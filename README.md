@@ -26,7 +26,11 @@ It should generally be safe to re-run the tool. Only content of posts that have 
 
 **Example:**
 ```
-main.py -o <output_dir> -u <youtube_channel_url>
+# From source:
+python3 main.py -o <output_dir> -u https://www.youtube.com/@<youtube-handle>
+
+# Windows binary:
+yt-community-post-archiver.exe -o <output_dir> -u https://www.youtube.com/@<youtube-handle>
 ```
 
 **Arguments:**
@@ -45,6 +49,8 @@ main.py -o <output_dir> -u <youtube_channel_url>
 In order to download posts which are only available to channel members, you need to supply a Netscape formatted cookies file to the tool.
 
 Easy ways to generate such a file are e.g. the Firefox Add-on [cookies.txt](https://github.com/hrdl-github/cookies-txt) or [yt-dlp's](https://github.com/yt-dlp/yt-dlp) `--cookies-from-browser` argument.
+
+_**Note: You should handle this file with care, as cookies are very sensitive data**_
 
 ### Supplying Post-IDs / -URL's
 You can optionally supply the tool with a list of Post-IDs/-Urls to download.  
