@@ -3,7 +3,7 @@ A small tool to download the content of a YouTube Channels Community Posts
 
 The tool will fetch all posts it can find* and download their attached content (i.e. images/video-thumbnails). The printable content of a post is written to a `post.txt` file. `post.json` contains the raw json data of the post.
 
-*_YouTube's API appears to limit the maximum number of posts that can be retrieved to the last 400. See [Supplying Post-IDs / -URL's](#supplying-post-ids-urls) below for a possible workaround._
+*_YouTube's API appears to limit the maximum number of posts that can be retrieved to the last 400. See [Supplying Post-IDs / -URL's](#supplying-post-ids---urls) below for a possible workaround._
 
 The posts & content will be written in a structure like this:
 ```
