@@ -135,7 +135,7 @@ def main():
         required=False,
         help="A optinal file containing post-id's or URLs to export",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.1")
 
     args = parser.parse_args()
 
