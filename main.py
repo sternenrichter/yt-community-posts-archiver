@@ -31,13 +31,24 @@ def export_posts(
             post = extractor.get_individual_post(url=post_url)
             if post:
                 posts.append(post)
+            else:
+                logger.warning(f"could not retrieve post from {post_url}")
+
+        logger.info(f"{len(posts)} posts retrieved from list")
 
     if url:
         logger.info(f"Extracting posts from '{url}'")
         extracted_posts = extractor.get_posts(url=url)
-        extracted_posts.reverse()
 
-        posts += extracted_posts
+        if extracted_posts:
+            logger.info(f"{len(extracted_posts)} posts retrieved via url")
+            extracted_posts.reverse()
+
+            posts += extracted_posts
+        elif posts:
+            logger.info(f"No addtional posts could be retrieved from '{url}'")
+        else:
+            logger.info(f"No posts could be retrieved from '{url}'")
 
     exporter.export_posts(posts=posts)
 
@@ -54,7 +65,9 @@ def load_cookies(file: str) -> dict[str, str]:
     with open(file) as f:
         content = f.read()
 
-    lines = [line for line in content.splitlines() if line.startswith(".youtube.com")]
+    pattern = re.compile("^(#.*?)?\.youtube\.com")
+
+    lines = [line for line in content.splitlines() if pattern.match(line)]
 
     for line in lines:
         parts = re.split("\s+", line)
@@ -122,7 +135,7 @@ def main():
         required=False,
         help="A optinal file containing post-id's or URLs to export",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.1")
 
     args = parser.parse_args()
 
@@ -171,8 +184,12 @@ def main():
 
     if cookies_file:
         cookies = load_cookies(file=cookies_file)
+        cookies["PREF"] = "hl=en"
     else:
-        cookies = {"CONSENT": "YES+"}
+        cookies = {
+            "CONSENT": "YES+",
+            "PREF": "hl=en"
+        }
 
     export_posts(
         url=url,

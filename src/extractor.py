@@ -3,8 +3,10 @@ import json
 import re
 import time
 import hashlib
+import logging
 from pydantic import BaseModel
 
+logger = logging.getLogger(name=__name__)
 
 class InitData(BaseModel):
     api_key: str = None
@@ -56,7 +58,7 @@ class PostExtractor:
         )
 
         for tab in tabs:
-            if tab.get("tabRenderer", {}).get("title", "") == "Community":
+            if self.is_community_tab(tab=tab):
                 post_list: list[dict] = (
                     tab.get("tabRenderer", {})
                     .get("content", {})
@@ -147,7 +149,7 @@ class PostExtractor:
     def extract_init_info(self, url: str) -> InitData:
         return_data = InitData()
 
-        response = requests.get(url, cookies={"CONSENT": "YES+"})
+        response = requests.get(url, cookies=self.cookies)
 
         if response.status_code == 200:
             html = response.text
@@ -166,7 +168,7 @@ class PostExtractor:
                 )
 
                 for tab in tabs:
-                    if tab.get("tabRenderer", {}).get("title", "") == "Community":
+                    if self.is_community_tab(tab=tab):
                         endpoint = (
                             tab.get("tabRenderer", {})
                             .get("endpoint", {})
@@ -218,7 +220,7 @@ class PostExtractor:
                 )
 
                 for tab in tabs:
-                    if tab.get("tabRenderer", {}).get("title", "") == "Community":
+                    if self.is_community_tab(tab=tab):
                         post = (
                             tab.get("tabRenderer", {})
                             .get("content", {})
@@ -238,6 +240,8 @@ class PostExtractor:
                         if post_id and post_id not in self.extracted_posts:
                             self.extracted_posts.add(post_id)
                             return post
+        else:
+            logger.warning(f"error extracting '{url}' - response-code: {response.status_code}")
 
     def calculate_sapisidhash(self):
         origin = "https://www.youtube.com"
@@ -252,3 +256,8 @@ class PostExtractor:
         SAPISIDHASH = f"{timestamp}_{sha1.hexdigest()}"
 
         return SAPISIDHASH
+
+    def is_community_tab(self, tab: dict) -> bool:
+        web_endpoint_url = tab.get("tabRenderer", {}).get("endpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
+
+        return web_endpoint_url.endswith("/community")
