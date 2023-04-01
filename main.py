@@ -1,4 +1,3 @@
-import re
 import logging
 import os
 import argparse
@@ -6,6 +5,7 @@ from pathlib import Path
 
 from src.extractor import PostExtractor
 from src.content_exporter import ContentExporter
+from src.cookies import initialize_cookies
 
 
 def export_posts(
@@ -58,26 +58,6 @@ def load_posts_file(file: str) -> list[str]:
         content = f.read()
 
     return content.splitlines()
-
-
-def load_cookies(file: str) -> dict[str, str]:
-    cookies: dict[str, str] = dict()
-    with open(file) as f:
-        content = f.read()
-
-    pattern = re.compile("^(#.*?)?\.youtube\.com")
-
-    lines = [line for line in content.splitlines() if pattern.match(line)]
-
-    for line in lines:
-        parts = re.split("\s+", line)
-        key = parts[5]
-        value = ""
-        if len(parts) >= 7:
-            value = parts[6]
-        cookies[key] = value
-
-    return cookies
 
 
 def parent_is_writable(path: str) -> bool:
@@ -135,7 +115,7 @@ def main():
         required=False,
         help="A optinal file containing post-id's or URLs to export",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0.1")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.2")
 
     args = parser.parse_args()
 
@@ -169,10 +149,6 @@ def main():
     else:
         archive_file = archive_file_default
 
-    if cookies_file and not os.path.isfile(cookies_file):
-        logger.warning(f"given cookie file '{cookies_file}' does could not be found")
-        cookies_file = ""
-
     if posts_file and not os.path.isfile(posts_file):
         logger.warning(f"given posts file '{posts_file}' could not be found")
         posts_file = ""
@@ -182,14 +158,7 @@ def main():
     else:
         post_ids = None
 
-    if cookies_file:
-        cookies = load_cookies(file=cookies_file)
-        cookies["PREF"] = "hl=en"
-    else:
-        cookies = {
-            "CONSENT": "YES+",
-            "PREF": "hl=en"
-        }
+    cookies = initialize_cookies(cookies_file=cookies_file)
 
     export_posts(
         url=url,
