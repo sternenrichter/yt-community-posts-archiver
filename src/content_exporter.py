@@ -12,6 +12,12 @@ class PollOption(BaseModel):
     votes: str = "0"
     percentage: str = "0%"
 
+class PostShare(BaseModel):
+    share_author: str = "N/A"
+    share_text: str = ""
+    share_time: str = ""
+    share_post_id: str = ""
+
 
 class PostContent(BaseModel):
     video_thumbnail_url: str = None
@@ -27,6 +33,7 @@ class PostContent(BaseModel):
     like_count: str = "0"
     attached_images: list[str] = list()
     poll: dict[str, PollOption] = dict()
+    share: PostShare = None
 
 
 logger = logging.getLogger(name=__name__)
@@ -39,6 +46,18 @@ $content
 $attached_content
 
 $likes Likes
+"""
+)
+
+share_post_template = Template(
+    """$author - $time
+
+$content
+
+---
+Original Post:
+
+$originalpost
 """
 )
 
@@ -108,24 +127,9 @@ class ContentExporter:
         ]
 
         return urls
-
-    def _extract_post_details(self, post: dict) -> PostContent:
-        post_content = PostContent()
-
-        # General Post content
-        post_content.post_id = post.get("postId", "")
-        post_content.author = (
-            post.get("authorText", {}).get("runs", [dict()])[0].get("text", "")
-        )
-        post_content.post_published_time = (
-            post.get("publishedTimeText", {}).get("runs", [dict()])[0].get("text", "")
-        )
-        post_content.members_only = "sponsorsOnlyBadge" in post.keys()
-        post_content.like_count = post.get("voteCount", {}).get("simpleText")
-
-        # Post Text
+    
+    def _get_post_text(self, text_runs: list[dict]) -> str:
         post_text_parts: list[str] = list()
-        text_runs: list[dict] = post.get("contentText", {}).get("runs", [])
 
         for text_run in text_runs:
             text = text_run.get("text", "")
@@ -144,7 +148,37 @@ class ContentExporter:
 
             post_text_parts.append(text)
 
-        post_content.post_text = "".join(post_text_parts)
+        return "".join(post_text_parts)
+    
+    def _extract_post_share_detais(self, post: dict) -> PostShare:
+        post_share = PostShare()
+
+        post_share.share_post_id = post.get("postId", "id_not_found")
+        post_share.share_author = post.get("displayName", {}).get("runs", [dict()])[0].get("text", "N/A")
+        post_share.share_text = self._get_post_text(text_runs=post.get("content", {}).get("runs", []))
+        post_share.share_time = post.get("publishedTimeText", {}).get("runs", [dict()])[0].get("text", "")
+
+        return post_share
+
+
+    def _extract_post_details(self, post: dict) -> PostContent:
+        post_content = PostContent()
+
+        # General Post content
+        post_content.post_id = post.get("postId", "no_id_found")
+        post_content.author = (
+            post.get("authorText", {}).get("runs", [dict()])[0].get("text", "")
+        )
+        post_content.post_published_time = (
+            post.get("publishedTimeText", {}).get("runs", [dict()])[0].get("text", "")
+        )
+        post_content.members_only = "sponsorsOnlyBadge" in post.keys()
+        post_content.like_count = post.get("voteCount", {}).get("simpleText")
+
+        # Post Text
+        text_runs: list[dict] = post.get("contentText", {}).get("runs", [])
+
+        post_content.post_text = self._get_post_text(text_runs=text_runs)
 
         # Post Images
         image_urls = []
@@ -247,13 +281,25 @@ class ContentExporter:
             index += 1
             logger.info(f"Exporting post {index}/{len(posts)}")
 
-            post = (
-                post_dict.get("backstagePostThreadRenderer", {})
-                .get("post", {})
-                .get("backstagePostRenderer", {})
-            )
+            post_common_root = post_dict.get("backstagePostThreadRenderer", {}).get("post", {})
+
+            share = None
+
+            if "sharedPostRenderer" in post_common_root.keys():
+                post = post_common_root.get("sharedPostRenderer", {}).get("originalPost", {}).get("backstagePostRenderer", {})
+
+                share = self._extract_post_share_detais(post=post_common_root.get("sharedPostRenderer", {}))
+            else:
+                post = (
+                    post_dict.get("backstagePostThreadRenderer", {})
+                    .get("post", {})
+                    .get("backstagePostRenderer", {})
+                )
 
             post_content = self._extract_post_details(post=post)
+            
+            if share:
+                post_content.share = share
 
             if post_content.post_id not in self.state.values():
                 post_num = str(index + previous_index_offset).zfill(4)
@@ -265,9 +311,13 @@ class ContentExporter:
                     " - Members only" if post_content.members_only else ""
                 )
 
+                post_path_id = post_content.post_id
+                if post_content.share and post_content.share.share_post_id:
+                    post_path_id = post_content.share.share_post_id
+
                 post_path = os.path.join(
                     self.output_path,
-                    f"[{post_num}]{members_only_tag} {post_content.post_id}",
+                    f"[{post_num}]{members_only_tag} {post_path_id}",
                 )
 
                 if not os.path.isdir(post_path):
@@ -320,7 +370,17 @@ class ContentExporter:
                     content=post_content.post_text,
                     attached_content=attached_content,
                     likes=post_content.like_count,
-                ).encode("utf-8")
+                )
+
+                if post_content.share:
+                    post_output = share_post_template.substitute(
+                        author=post_content.share.share_author,
+                        time=post_content.share.share_time,
+                        content=post_content.share.share_text,
+                        originalpost=post_output
+                    )
+                
+                post_output = post_output.encode("utf-8")
 
                 with open(os.path.join(post_path, "post.txt"), "wb") as f:
                     f.write(post_output)
