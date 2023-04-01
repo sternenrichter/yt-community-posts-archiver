@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(name=__name__)
 
+
 class InitData(BaseModel):
     api_key: str = None
     request_body: dict = dict()
@@ -241,7 +242,9 @@ class PostExtractor:
                             self.extracted_posts.add(post_id)
                             return post
         else:
-            logger.warning(f"error extracting '{url}' - response-code: {response.status_code}")
+            logger.warning(
+                f"error extracting '{url}' - response-code: {response.status_code}"
+            )
 
     def calculate_sapisidhash(self):
         origin = "https://www.youtube.com"
@@ -258,6 +261,12 @@ class PostExtractor:
         return SAPISIDHASH
 
     def is_community_tab(self, tab: dict) -> bool:
-        web_endpoint_url = tab.get("tabRenderer", {}).get("endpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
+        web_endpoint_url = (
+            tab.get("tabRenderer", {})
+            .get("endpoint", {})
+            .get("commandMetadata", {})
+            .get("webCommandMetadata", {})
+            .get("url", "")
+        )
 
         return web_endpoint_url.endswith("/community")
